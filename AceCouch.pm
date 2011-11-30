@@ -30,9 +30,13 @@ sub port { shift->{port} }
 sub fetch {
     my $self = shift;
 
-    my %params = @_ > 2  ? @_
-               : @_ == 2 ? (class => $_[0], name => $_[1])
-               : %{$_[0]};
+    my %params = @_ > 2    ? @_
+               : @_ == 2   ? (class => $_[0], name => $_[1])
+               : ref $_[0] ? %{$_[0]}
+               : do {
+                   my ($c,$n) = split /~/, $_[0];
+                   (class => $c, name => $n);
+                 };
 
     my $class = $params{class}
         // AC::E::RequiredArgument->throw('fetch requires "class" arg');
@@ -41,7 +45,7 @@ sub fetch {
 
     # this will check for an underlying subdb
     my $db = $self->{_classdb}->{$class} //= $self->_connect($class);
-    my $id = uri_escape("${class}_${name}");
+    my $id = uri_escape("${class}~${name}");
         # should be abstracted into AceCouch::Object?
 
     # performance:
@@ -51,11 +55,17 @@ sub fetch {
     # notag unfilled  1 req  (head)
 
     if (defined $params{tag}) {
-        my $obj_ids = $db->view("\L$class\E/$params{tag}")->recv->{rows};
+        # prepare args for querying view
+        my @args = ( "\L$class\E/$params{tag}",
+                     { key => [ $id, $class, $name ] } );
 
-        $obj_ids = [$obj_ids->[0]] if !wantarray && @$obj_ids;
-        my $options = { include_docs => $params{filled} };
+        my @obj_ids = map { $_->{value} } @{ $db->view(@args)->recv->{rows} };
+        @obj_ids = ($obj_ids[0]) if !wantarray && @obj_ids;
 
+        # prepare for opening docs
+        @args = (\@obj_ids, { include_docs => $params{filled} });
+
+        # this can be optimized for single document fetches (get vs post)
         return map {
             AceCouch::Object->new({
                 db     => $self,
@@ -63,7 +73,7 @@ sub fetch {
                 data   => $_->{doc},
                 filled => $params{filled},
             });
-        } @{ $db->open_docs( $obj_ids, $options )->recv->{rows} };
+        } @{ $db->open_docs(@args)->recv->{rows} };
     }
 
     if ($params{filled}) {
