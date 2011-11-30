@@ -1,15 +1,25 @@
 package AceCouch::Object;
 
-use strict;
-use warnings;
+use common::sense;
 
-use AutoLoader 'AUTOLOAD';
+use overload (
+    '""'       => 'as_string',
+    'fallback' => 'TRUE',
+);
+
+BEGIN { *as_string = \&name; }
 
 sub AUTOLOAD {
-    my ($pkg, $sub_name) = $AUTOLOAD =~ /(.+)::(.+)/;
+    our $AUTOLOAD;
+    my ($tag) = $AUTOLOAD =~ /.*::(.+)/;
     my $self = shift;
+    # TODO: fill & tree
 
-    $self->db->get(@_); # step into it
+    return $self->db->fetch(
+        class  => $self->class,
+        name   => $self->name,
+        tag    => $tag,
+    );
 }
 
 sub new {
@@ -17,8 +27,11 @@ sub new {
     return bless $args, $class;
 }
 
-sub db {
-    return $self->{db};
-}
+sub id     { shift->{id} }
+sub name   { shift->{data}{name} }
+sub class  { shift->{data}{class} }
+sub data   { shift->{data} }
+sub filled { shift->{filled} }
+sub db     { shift->{db} }
 
 1;
