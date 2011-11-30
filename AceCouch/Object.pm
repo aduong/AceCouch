@@ -27,6 +27,8 @@ sub new {
     return bless $args, $class;
 }
 
+sub DESTROY {}
+
 sub id     { shift->{id} }
 sub name   { shift->{data}{name} }
 sub class  { shift->{data}{class} }
