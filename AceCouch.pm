@@ -43,6 +43,9 @@ sub fetch {
     my $name  = $params{name}
         // AC::E::RequiredArgument->throw('fetch requires "name" arg');
 
+    AC::E::Unimplemented->throw('Fetch does not yet support trees')
+        if $params{tree};
+
     # this will check for an underlying subdb
     my $db = $self->{_classdb}->{$class} //= $self->_connect($class);
     my $id = uri_escape("${class}~${name}");
@@ -56,14 +59,16 @@ sub fetch {
 
     if (defined $params{tag}) {
         # prepare args for querying view
-        my @args = ( "\L$class\E/$params{tag}",
-                     { key => [ $id, $class, $name ] } );
+        my $view = "\L$class\E/$params{tag}";
+        # $view   .= '~TREE' if $params{tree};
+
+        my @args = ( $view, { key => [ $id, $class, $name ] } );
 
         my @obj_ids = map { $_->{value} } @{ $db->view(@args)->recv->{rows} };
         @obj_ids = ($obj_ids[0]) if !wantarray && @obj_ids;
 
         # prepare for opening docs
-        @args = (\@obj_ids, { include_docs => $params{filled} });
+        @args = ( \@obj_ids, { include_docs => $params{filled} } );
 
         # this can be optimized for single document fetches (get vs post)
         return map {

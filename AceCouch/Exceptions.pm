@@ -15,6 +15,10 @@ use Exception::Class (
         isa         => 'AC::E',
         description => 'Class could not be found',
     },
+    'AC::E::Unimplemented' => {
+        isa         => 'AC::E',
+        description => 'Unimplemented feature',
+    },
 );
 
 1;
