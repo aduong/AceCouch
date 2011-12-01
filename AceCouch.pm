@@ -48,7 +48,7 @@ sub fetch {
 
     # this will check for an underlying subdb
     my $db = $self->{_classdb}->{$class} //= $self->_connect($class);
-    my $id = uri_escape("${class}~${name}");
+    my $id = $params{id} // uri_escape("${class}~${name}");
         # should be abstracted into AceCouch::Object?
 
     # performance:
@@ -67,18 +67,28 @@ sub fetch {
         my @obj_ids = map { $_->{value} } @{ $db->view(@args)->recv->{rows} };
         @obj_ids = ($obj_ids[0]) if !wantarray && @obj_ids;
 
-        # prepare for opening docs
-        @args = ( \@obj_ids, { include_docs => $params{filled} } );
+        my %obj_ids_by_class;
+        foreach (@obj_ids) {
+            push @{$obj_ids_by_class{(split /~/, $_, 2)[0]}}, $_;
+        }
 
-        # this can be optimized for single document fetches (get vs post)
-        return map {
-            AceCouch::Object->new({
-                db     => $self,
-                id     => $_->{doc}{_id},
-                data   => $_->{doc},
-                filled => $params{filled},
-            });
-        } @{ $db->open_docs(@args)->recv->{rows} };
+        my @objs;
+        while (my ($class, $obj_ids) = each %obj_ids_by_class) {
+            my $db = $self->{_classdb}->{$class} //= $self->_connect($class);
+            @args = ( $obj_ids, { include_docs => $params{filled} } );
+
+            # this can be optimized for single document fetches (get vs post)
+            push @objs, map {
+                AceCouch::Object->new({
+                    db     => $self,
+                    id     => $_->{doc}{_id},
+                    data   => $_->{doc},
+                    filled => $params{filled},
+                });
+            } @{ $db->open_docs(@args)->recv->{rows} };
+        }
+
+        return wantarray ? @objs : $objs[0];
     }
 
     if ($params{filled}) {
@@ -86,7 +96,7 @@ sub fetch {
             db     => $self,
             id     => $id,
             data   => $db->open_doc($id)->recv,
-            filled => 1
+            filled => 1,
         });
     }
 
