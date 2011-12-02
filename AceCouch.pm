@@ -60,7 +60,7 @@ sub fetch {
     if (defined $params{tag}) {
         # prepare args for querying view
         my $view = "\L$class\E/$params{tag}";
-        # $view   .= '~TREE' if $params{tree};
+        $view   .= '~TREE' if $params{tree};
 
         my @args = ( $view, { key => [ $id, $class, $name ] } );
 
@@ -84,6 +84,7 @@ sub fetch {
                     id     => $_->{doc}{_id},
                     data   => $_->{doc},
                     filled => $params{filled},
+                    tree   => $params{filled} || $params{tree},
                 });
             } @{ $db->open_docs(@args)->recv->{rows} };
         }
