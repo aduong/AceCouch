@@ -19,7 +19,7 @@ my $ac = new_ok(
 my ($obj, $id, $class, $name, $tag);
 
 ($class, $name) = (Gene => 'WBGene00000018');
-$id = "${class}_${name}";
+$id = "${class}~${name}";
 
 subtest 'Fetch unfilled object' => sub {
     isa_ok($obj = $ac->fetch($class => $name), 'AceCouch::Object');
