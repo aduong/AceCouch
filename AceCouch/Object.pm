@@ -52,6 +52,11 @@ sub filled { shift->{filled} }
 sub tree   { shift->{tree} }
 sub db     { shift->{db} }
 
+sub isTag  { shift->class eq 'tag' }
+sub isObject {
+    shift->class !~ /^(float|int|date|tag|txt|peptide|dna|scalar|[Tt]ext|comment)$/;
+}
+
 sub col {
     my $self = shift;
     AC::E::Unimplemented->throw('Positional index not yet supported')

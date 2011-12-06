@@ -52,7 +52,7 @@ subtest 'Fetch filled object' => sub {
 
 my $filled_obj = $obj; # used to check tags
 
-$tag = 'Gene_info';
+$tag = 'Method';
 subtest 'Fetch unfilled, scalar tag' => sub {
     $obj = $ac->fetch(
         class => $class,
@@ -61,12 +61,36 @@ subtest 'Fetch unfilled, scalar tag' => sub {
     );
     isa_ok($obj, 'AceCouch::Object');
     ok(!$obj->filled, 'Object unfilled');
-    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{Gene_info}}),
+    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{Method}}),
                'Object id ok');
     my ($class, $name) = ($obj->class, $obj->name);
     ok($obj->id =~ /\Q$name\E/, 'Object name ok');
     ok($obj->class =~ /\Q$class\E/, 'Object class ok');
     is($obj->db, $ac, 'Object db ok');
 };
+
+subtest 'Fetch unfilled, scalar tag' => sub {
+    $obj = $ac->fetch(
+        class  => $class,
+        name   => $name,
+        tag    => $tag,
+        filled => 1,
+    );
+    isa_ok($obj, 'AceCouch::Object');
+    ok($obj->filled, 'Object filled');
+    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{Method}}),
+               'Object id ok');
+    my ($class, $name) = ($obj->class, $obj->name);
+    ok($obj->id =~ /\Q$name\E/, 'Object name ok');
+    ok($obj->class =~ /\Q$class\E/, 'Object class ok');
+    is($obj->db, $ac, 'Object db ok');
+};
+
+subtest 'Follow tag' => sub {
+    $obj = $obj->GFF_feature;
+    isa_ok($obj, 'AceCouch::Object');
+    ok(! $obj->filled, 'Object filled');
+};
+
 
 done_testing;

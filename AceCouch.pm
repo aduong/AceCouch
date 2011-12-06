@@ -62,17 +62,19 @@ sub fetch {
         my $view = "\L$class\E/$params{tag}";
         $view   .= '~TREE' if $params{tree};
 
-        my @args = ( $view, { key => [ $id, $class, $name ] } );
+        $view = $db->view($view, { key => $id })->recv->{rows}->[0]->{value};
+        
 
-        my @obj_ids = map { $_->{value} } @{ $db->view(@args)->recv->{rows} };
+        my @obj_ids = !$params{tree} ? @{ $db->view(@args)->recv->{rows}->[0]->{value} }
         @obj_ids = ($obj_ids[0]) if !wantarray && @obj_ids;
 
         my %obj_ids_by_class;
         foreach (@obj_ids) {
-            push @{$obj_ids_by_class{(split /~/, $_, 2)[0]}}, $_;
+            push @{ $obj_ids_by_class{(split /~/, $_, 2)[0]} }, $_;
         }
+        @obj_ids = ();
 
-        my @objs;
+        my (@objs, @args);
         while (my ($class, $obj_ids) = each %obj_ids_by_class) {
             my $db = $self->{_classdb}->{$class} //= $self->_connect($class);
             @args = ( $obj_ids, { include_docs => $params{filled} } );
