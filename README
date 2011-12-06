@@ -1,0 +1,4 @@
+AceCouch provides a perl API for accessing CouchDB objects converted
+from AceDB objects. It is based on AcePerl but does not attempt to
+achieve feature and interface parity. At the least, it will work
+(mostly) as-is for WormBase 2.0's model code in WormBase::API.
