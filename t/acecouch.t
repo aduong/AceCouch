@@ -10,7 +10,7 @@ throws_ok { AceCouch->new } 'AC::E', 'Naked new throws';
 
 my $ac = new_ok(
     'AceCouch' => [
-        name => 'ws228_experimental',
+        name => 'ws228',
         host => 'localhost',
         port => 5984,
     ]
@@ -46,7 +46,7 @@ subtest 'Fetch filled object' => sub {
         my $data = $obj->data;
         is($data->{_id}, $id, 'Internal id ok');
         ok($data->{_rev}, 'Rev present');
-        ok($data->{Gene_info}, 'Gene info present');
+        ok($data->{'tag~Gene_info'}, 'Gene info present');
     };
 };
 
@@ -61,7 +61,7 @@ subtest 'Fetch unfilled, scalar tag' => sub {
     );
     isa_ok($obj, 'AceCouch::Object');
     ok(!$obj->filled, 'Object unfilled');
-    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{Method}}),
+    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{'tag~Method'}}),
                'Object id ok');
     my ($class, $name) = ($obj->class, $obj->name);
     ok($obj->id =~ /\Q$name\E/, 'Object name ok');
@@ -69,7 +69,7 @@ subtest 'Fetch unfilled, scalar tag' => sub {
     is($obj->db, $ac, 'Object db ok');
 };
 
-subtest 'Fetch unfilled, scalar tag' => sub {
+subtest 'Fetch filled, scalar tag' => sub {
     $obj = $ac->fetch(
         class  => $class,
         name   => $name,
@@ -78,7 +78,7 @@ subtest 'Fetch unfilled, scalar tag' => sub {
     );
     isa_ok($obj, 'AceCouch::Object');
     ok($obj->filled, 'Object filled');
-    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{Method}}),
+    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{'tag~Method'}}),
                'Object id ok');
     my ($class, $name) = ($obj->class, $obj->name);
     ok($obj->id =~ /\Q$name\E/, 'Object name ok');
@@ -86,8 +86,9 @@ subtest 'Fetch unfilled, scalar tag' => sub {
     is($obj->db, $ac, 'Object db ok');
 };
 
+$tag = 'GFF_feature';
 subtest 'Follow tag' => sub {
-    $obj = $obj->GFF_feature;
+    $obj = $obj->$tag;
     isa_ok($obj, 'AceCouch::Object');
     ok(! $obj->filled, 'Object filled');
 };

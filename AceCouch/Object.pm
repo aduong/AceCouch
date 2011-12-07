@@ -1,6 +1,7 @@
 package AceCouch::Object;
 
 use common::sense;
+use AceCouch::Exceptions;
 
 use overload (
     '""'       => 'as_string',
@@ -35,9 +36,32 @@ sub AUTOLOAD {
     );
 }
 
-sub new {
+sub new { # TODO: fix this nastiness
     my ($class, $args) = @_;
+
     return bless $args, $class;
+}
+
+## specific constructors... mild code duplication for now
+
+sub new_unfilled {
+    my ($class, $db, $id) = @_;
+    my ($c, $n) = split /~/, $id, 2;
+    return bless { db => $db, id => $id, data => { class => $c, name => $n } },
+                 $class;
+}
+
+sub new_filled {
+    my ($class, $db, $id, $data) = @_;
+
+    return bless { db => $db, id => $id, filled => 1, data => $data }, $class;
+}
+
+sub new_tree {
+    my ($class, $db, $id, $data) = @_;
+    @{$data}{'class','name'} = split /~/, $id, 2;
+
+    return bless { db => $db, id => $id, filled => 1, tree => 1, data => $data }, $class;
 }
 
 sub DESTROY {}
@@ -49,7 +73,7 @@ sub name   { shift->{data}{name} }
 sub class  { shift->{data}{class} }
 sub data   { shift->{data} }
 sub filled { shift->{filled} }
-sub tree   { shift->{tree} }
+sub tree   { shift->{tree} } # if the obj is filled, is it a tree?
 sub db     { shift->{db} }
 
 sub isTag  { shift->class eq 'tag' }
