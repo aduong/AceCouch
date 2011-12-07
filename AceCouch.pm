@@ -42,9 +42,6 @@ sub fetch {
     my $name  = $params{name}
         // AC::E::RequiredArgument->throw('fetch requires "name" arg');
 
-    AC::E::Unimplemented->throw('Fetch does not yet support trees')
-        if $params{tree};
-
     # this will check for an underlying subdb
     my $db = $self->{_classdb}->{$class} //= $self->_connect($class);
     my $id = $params{id} // uri_escape("${class}~${name}");

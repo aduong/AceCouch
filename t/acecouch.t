@@ -96,6 +96,14 @@ subtest 'Follow tag' => sub {
 
 $tag = 'Allele';
 subtest 'Follow tag, scalar' => sub {
+    ok(my $variation = $obj->$tag, 'Followed through');
+    isa_ok($variation, 'AceCouch::Object');
+    is($variation->class, 'Variation', 'Object class ok');
+    ok(! $variation->filled, 'Object unfilled');
+    is($variation->db, $ac, 'object db ok');
+};
+
+subtest 'Follow tag, list' => sub {
     my @subobjs = $obj->$tag;
     ok(@subobjs, 'Got at least one object');
 
@@ -105,6 +113,12 @@ subtest 'Follow tag, scalar' => sub {
         ok(! $_->filled, 'Object unfilled');
         is($_->db, $ac, 'Object db ok');
     }
+};
+
+subtest 'Follow tag, tree' => sub {
+    ok(my $tree = $obj->$tag(0), 'Followed through');
+    isa_ok($tree, 'AceCouch::Object');
+    ok($tree->tree, 'Object is tree');
 };
 
 done_testing;
