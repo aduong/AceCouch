@@ -51,47 +51,65 @@ subtest 'Fetch filled object' => sub {
 };
 
 my $filled_obj = $obj; # used to check tags
+my $subobj;
 
 $tag = 'Method';
 subtest 'Fetch unfilled, scalar tag' => sub {
-    $obj = $ac->fetch(
+    $subobj = $ac->fetch(
         class => $class,
         name  => $name,
         tag   => $tag,
     );
-    isa_ok($obj, 'AceCouch::Object');
-    ok(!$obj->filled, 'Object unfilled');
-    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{'tag~Method'}}),
+    isa_ok($subobj, 'AceCouch::Object');
+    ok(!$subobj->filled, 'Object unfilled');
+    cmp_deeply($subobj->id, any(keys %{$filled_obj->data->{'tag~Method'}}),
                'Object id ok');
-    my ($class, $name) = ($obj->class, $obj->name);
-    ok($obj->id =~ /\Q$name\E/, 'Object name ok');
-    ok($obj->class =~ /\Q$class\E/, 'Object class ok');
-    is($obj->db, $ac, 'Object db ok');
+    my ($class, $name) = ($subobj->class, $subobj->name);
+    ok($subobj->id =~ /\Q$name\E/, 'Object name ok');
+    ok($subobj->class =~ /\Q$class\E/, 'Object class ok');
+    is($subobj->db, $ac, 'Object db ok');
 };
 
 subtest 'Fetch filled, scalar tag' => sub {
-    $obj = $ac->fetch(
+    $subobj = $ac->fetch(
         class  => $class,
         name   => $name,
         tag    => $tag,
         filled => 1,
     );
-    isa_ok($obj, 'AceCouch::Object');
-    ok($obj->filled, 'Object filled');
-    cmp_deeply($obj->id, any(keys %{$filled_obj->data->{'tag~Method'}}),
+    isa_ok($subobj, 'AceCouch::Object');
+    ok($subobj->filled, 'Object filled');
+    cmp_deeply($subobj->id, any(keys %{$filled_obj->data->{'tag~Method'}}),
                'Object id ok');
-    my ($class, $name) = ($obj->class, $obj->name);
-    ok($obj->id =~ /\Q$name\E/, 'Object name ok');
-    ok($obj->class =~ /\Q$class\E/, 'Object class ok');
-    is($obj->db, $ac, 'Object db ok');
+    my ($class, $name) = ($subobj->class, $subobj->name);
+    ok($subobj->id =~ /\Q$name\E/, 'Object name ok');
+    ok($subobj->class =~ /\Q$class\E/, 'Object class ok');
+    is($subobj->db, $ac, 'Object db ok');
 };
 
 $tag = 'GFF_feature';
 subtest 'Follow tag' => sub {
-    $obj = $obj->$tag;
-    isa_ok($obj, 'AceCouch::Object');
-    ok(! $obj->filled, 'Object filled');
+    my $subobj = $subobj->$tag; # lexical
+    isa_ok($subobj, 'AceCouch::Object');
+    ok(! $subobj->filled, 'Object filled');
 };
 
+$tag = 'Allele';
+subtest 'Follow tag, scalar' => sub {
+    my @subobjs = $obj->$tag;
+    ok(@subobjs, 'Got at least one object');
+
+    foreach (@subobjs) {
+        isa_ok($_, 'AceCouch::Object');
+        is($_->class, 'Variation', 'Object class ok');
+        ok(! $_->filled, 'Object unfilled');
+        is($_->db, $ac, 'Object db ok');
+    }
+};
 
 done_testing;
+
+sub ddump {
+    require Data::Dumper;
+    diag(Data::Dumper::Dumper(@_));
+}

@@ -8,12 +8,17 @@ use overload (
     'fallback' => 'TRUE',
 );
 
-BEGIN { *as_string = \&name; }
+BEGIN {
+    *as_string = \&name;
+    *fetch     = \&fill;
+}
 
 sub AUTOLOAD {
     our $AUTOLOAD;
     my ($tag) = $AUTOLOAD =~ /.*::(.+)/;
     my $self = shift;
+
+    # TODO: if the object is filled, we don't need to fetch it from the db
 
     my ($fill, $tree); # both cannot be true...
 
@@ -75,6 +80,12 @@ sub data   { shift->{data} }
 sub filled { shift->{filled} }
 sub tree   { shift->{tree} } # if the obj is filled, is it a tree?
 sub db     { shift->{db} }
+
+sub fetch { # destructive
+    my $self = shift;
+    my $filled = $self->db->fetch($self->id);
+    %$self = %$filled;
+}
 
 sub isTag  { shift->class eq 'tag' }
 sub isObject {
