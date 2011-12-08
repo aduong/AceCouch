@@ -10,7 +10,7 @@ use overload (
 
 BEGIN {
     *as_string = \&name;
-    *fetch     = \&fill;
+    *isClass   = \&isObject;
 }
 
 sub AUTOLOAD {
@@ -64,9 +64,9 @@ sub new_filled {
 
 sub new_tree {
     my ($class, $db, $id, $data) = @_;
-    @{$data}{'class','name'} = split /~/, $id, 2;
+    @{$data}{'class','name'} = split /~/, $id, 2; # even trees have names and classes...
 
-    return bless { db => $db, id => $id, filled => 1, tree => 1, data => $data }, $class;
+    return bless { db => $db, id => $id, tree => 1, data => $data }, $class;
 }
 
 sub DESTROY {}
@@ -77,14 +77,36 @@ sub id     { shift->{id} }
 sub name   { shift->{data}{name} }
 sub class  { shift->{data}{class} }
 sub data   { shift->{data} }
-sub filled { shift->{filled} }
-sub tree   { shift->{tree} } # if the obj is filled, is it a tree?
 sub db     { shift->{db} }
 
-sub fetch { # destructive
+# convention: filled and tree are mutually exclusive. filled
+# AC::Objects should represent complete objects in the backend. tree
+# AC::Objects should represent the root node of a subtree. trees, if
+# their root node "isObject", should allow for stepping into the
+# object via "fetch" or "fill".
+sub filled { shift->{filled} }
+sub tree   { shift->{tree} }
+
+sub fill { # destructive. fills an unfilled object
     my $self = shift;
-    my $filled = $self->db->fetch($self->id);
-    %$self = %$filled;
+
+    if ( !$self->filled and $self->isObject) {
+        my $filled = $self->db->fetch($self->id, filled => 1);
+        %$self = %$filled;
+    }
+
+    return $self;
+}
+
+sub fetch { # destructive. fetches an unfilled object if tree
+    my $self = shift;
+
+    if ($self->tree and $self->isObject) {
+        my $obj = $self->db->fetch($self->id);
+        %$self = %$obj;
+    }
+
+    return $self;
 }
 
 sub isTag  { shift->class eq 'tag' }
@@ -92,36 +114,50 @@ sub isObject {
     shift->class !~ /^(float|int|date|tag|txt|peptide|dna|scalar|[Tt]ext|comment)$/;
 }
 
-sub col {
+sub col { # implicitly fills an object
     my $self = shift;
-    AC::E::Unimplemented->throw('Positional index not yet supported')
-        if @_;
+    AC::E::Unimplemented->throw('Positional index not yet supported') if @_;
 
-    if ($self->tree) {
-        my @obj_ids = keys %{$self->data};
-
-        return @obj_ids if wantarray;
-
-        return map {
-            my ($class, $name) = split /~/, $_, 2;
-            AceCouch::Object->new({
-                db     => $self->db,
-                id     => $_,
-                filled => undef,
-                data   => {
-                    class => $class,
-                    name  => $name,
-                },
-            });
-        } @obj_ids;
+    if ($self->tree or $self->filled) {
+        return map { AceCouch::Object->new_unfilled($self->db, $_) }
+               grep { $_ ne 'class' and $_ ne 'name' } keys %{$self->data};
     }
 
-    # fetch the tree structure (whole object)
-    $self->db->fetch(
-        class => $self->class,
-        name  => $self->name,
-        fill  => 1,
+    # neither tree nor filled, i.e. unfilled object
+    $self->fill->col;
+}
+
+sub right { # emulate via col
+    my $self = shift;
+    AC::E::Unimplemented->throw('Positional index not yet supported') if @_;
+    # if index = 0, then just return a tree...
+
+    $self->fill unless $self->tree; # if filled already, fill will return
+
+    my @obj_ids = grep { $_ ne 'class' and $_ ne 'name' } keys %{$self->data}
+        or return;
+
+    AC::E->throw('Ambiguous call to right') if @obj_ids > 1;
+
+    return AceCouch::Object->new_tree(
+        $self->db, $obj_ids[0], $self->data->{$obj_ids[0]}
     );
 }
 
-1;
+sub at { # this doesn't require emulation :)
+    my $self = shift;
+    my $path = shift;
+
+    $self->fill unless $self->tree; # if filled already, fill will return
+
+    my ($subid, $subhash) = ($self->id, $self->data);
+    for my $path_part (split /\./, $path) {
+        $subid = "tag~$path_part";
+        $subhash = $subhash->{$subid} or last;
+    }
+
+    return AceCouch::Object->new_tree($self->db, $subid, $subhash) if $subhash;
+    return;
+}
+
+__PACKAGE__

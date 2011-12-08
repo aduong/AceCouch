@@ -103,9 +103,8 @@ sub fetch {
 
     # this is not fetching the tag of an object, but an object itself
 
-    if ($params{filled}) {
-        return AceCouch::Object->new_filled($self, $id, $db->open_doc($id)->recv);
-    }
+    return AceCouch::Object->new_filled($self, $id, $db->open_doc($id)->recv)
+        if $params{filled};
 
     # just want a "reference" to the object in the db
 
@@ -127,7 +126,7 @@ sub _connect {
     my ($self, $class) = @_;
     my $dbs = $self->{_conn}->all_dbs->recv;
 
-    my $dbname = $self->name . "_\L$class";
+    my $dbname = $self->name . lc "_$class";
   DBEXISTS: {
         foreach (@$dbs) {
             last DBEXISTS if $dbname eq $_;
@@ -138,4 +137,4 @@ sub _connect {
     return $self->{_conn}->db($dbname);
 }
 
-1;
+__PACKAGE__
