@@ -54,8 +54,8 @@ sub fetch {
     # notag unfilled  1 req  (head)
 
     if ($params{tag}) {
-        my $view = "\L$class\E/$params{tag}";
-        $view   .= '~TREE' if $params{tree}; # tag + tree, e.g. $obj->Tag(0)
+        my $view = ($params{tree} ? 'tree' : 'tag') . '/' . $params{tag};
+        # if $params{tree}, then this is $obj->Tag(0)
 
         $view = $db->view($view, { key => $id })->recv->{rows}->[0]->{value};
 
