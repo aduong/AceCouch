@@ -3,9 +3,10 @@ package AceCouch::Test::Util;
 use common::sense;
 use AceCouch;
 use Test::More;
+use URI::Escape::XS qw(uri_unescape);
 use Exporter 'import';
 
-our @EXPORT = qw(ddump connect likely_filled_ok likely_tree_ok);
+our @EXPORT = qw(ddump connect likely_filled_ok likely_tree_ok uri_unescape);
 our @EXPORT_OK;
 
 sub connect {

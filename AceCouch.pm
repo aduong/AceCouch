@@ -4,7 +4,7 @@ use common::sense;
 use AnyEvent::CouchDB;
 use AceCouch::Object;
 use AceCouch::Exceptions;
-use URI::Escape;
+use URI::Escape::XS qw(uri_escape);
 
 BEGIN {
     *connect = \&new;
@@ -44,6 +44,10 @@ sub fetch {
                    (class => $c, name => $n);
                  };
 
+    foreach (qw(class name tag filled tree)) { # AcePerl interface... might remove later
+        $params{$_} //= $params{"-$_"};
+    }
+
     my $class = $params{class}
         // AC::E::RequiredArgument->throw('fetch requires "class" arg');
     my $name  = $params{name}
@@ -51,7 +55,7 @@ sub fetch {
 
     # this will check for an underlying subdb
     my $db = $self->{_classdb}->{$class} //= $self->_connect($class);
-    my $id = $params{id} // uri_escape("${class}~${name}");
+    my $id = $params{id} // $self->cn2id($class, $name);
         # should be abstracted into AceCouch::Object?
 
     # performance:
@@ -75,7 +79,9 @@ sub fetch {
         return unless @$obj_ids;
 
         # single object or not?
-        unless (wantarray) {
+        unless (wantarray) { # single
+            AC::E->throw('Ambiguous fetch; the fetch will result in a random object')
+                if @$obj_ids > 1;
             $id = $obj_ids->[0];
 
             return AceCouch::Object->new_unfilled($self, $id) unless $params{filled};
@@ -96,7 +102,7 @@ sub fetch {
 
         my %objs_by_class;
         foreach (@$obj_ids) {
-            push @{ $objs_by_class{ ($self->id2cn($_))[0] } }, $_;
+            push @{ $objs_by_class{ ($self->id2cn($_))[0] } }, uri_escape($_); # problem area
         }
 
         return map {
@@ -104,21 +110,21 @@ sub fetch {
             my $class = $_;
             $db = $self->{_classdb}->{$class} //= $self->_connect($class);
             map {
-                return unless defined $_->{doc};
-                AceCouch::Object->new_filled($self, $_->{id}, $_->{doc});
+                defined $_->{doc} ?
+                     AceCouch::Object->new_filled($self, $_->{id}, $_->{doc}) : ()
             } @{ $db->open_docs( $objs_by_class{$class} )->recv->{rows} };
         } keys %objs_by_class;
     }
 
     # this is not fetching the tag of an object, but an object itself
 
-    return AceCouch::Object->new_filled($self, $id, $db->open_doc($id)->recv)
+    return AceCouch::Object->new_filled($self, $id, $db->open_doc( uri_escape($id) )->recv)
         if $params{filled};
 
     # just want a "reference" to the object in the db
 
     # check if the object exists via HEAD
-    my $response = $db->head(uri_escape($id))->recv
+    my $response = $db->head( uri_escape( uri_escape($id) ) )->recv
         or AC::E->throw(qq/Could not send HEAD for "$id"/);
 
     return unless $response->{Status} =~ /^2/; # object doesn't exist
