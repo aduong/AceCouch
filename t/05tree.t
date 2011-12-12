@@ -73,4 +73,17 @@ subtest 'Right on tree' => sub {
        'Subtree ID ok');
 };
 
+subtest 'Fetch on tree node' => sub {
+    my $tag = 'RNAi_result';
+    ok(my $subtree = ($obj->$tag)[0], 'Got tree node');
+    is($subtree->class, 'RNAi', 'Node class ok');
+    like($subtree->id, qr/^RNAi/, 'Node ID ok');
+    likely_tree_ok($subtree);
+    $subtree->fetch;
+    ok(! $subtree->filled, 'Object is unfilled');
+    ok(! $subtree->tree, 'Object is not tree');
+    is($subtree->class, 'RNAi', 'Object class ok');
+    like($subtree->id, qr/^RNAi/, 'Object ID ok');
+};
+
 done_testing;
