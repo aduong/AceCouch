@@ -47,9 +47,9 @@ sub AUTOLOAD {
         my $tree = $self->db->fetch(%params, tree => 1);
         my $data = $tree->data;
         return map {
+            return if /^_/;
             AceCouch::Object->new_tree($self->db, $_, $data->{$_});
         }
-        grep { $_ !~ /^(class|name|_)/ }
         keys %$data;
     }
 
@@ -166,9 +166,9 @@ sub col { # implicitly fills an object
     $self->fill unless $self->tree;
 
     return map {
+        return if /^_/;
         AceCouch::Object->new_unfilled($self->db, $_)
     }
-    grep { !/^_/ }
     keys %{$self->data};
 }
 
@@ -224,8 +224,7 @@ sub tags {
 
     $self->fill unless $self->tree;
 
-    return map { (my $t = $_) =~ s/tag~//; $t }
-           grep { /^tag~/ }
+    return map { (my $t = $_) =~ s/tag~// or return; $t }
            keys %{$self->data};
 }
 
