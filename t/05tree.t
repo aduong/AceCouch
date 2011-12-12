@@ -153,4 +153,12 @@ subtest 'Get on tree (list ctx)' => sub {
     };
 };
 
+subtest 'Get on tree, >= 2 deep' => sub {
+    my $tag = 'Provisional_description';
+    ok(my $subtree = $tree->get($tag), 'Got object ok');
+    likely_tree_ok($subtree);
+    is($subtree->class, 'tag', 'Object class ok');
+    is($subtree->name, $tag, 'Object name ok');
+};
+
 done_testing;

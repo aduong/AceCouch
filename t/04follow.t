@@ -87,6 +87,8 @@ subtest 'Col on unfilled obj' => sub {
 
 ok(! $obj->get('THIS_DOES_NOT_EXIST'), 'Invalid get on root object ok');
 
+# there's some overlap with tree below
+
 subtest 'Get on root object (scalar ctx)' => sub {
     my $tag = 'Map_info';
     my $tree = $obj->get($tag);
@@ -107,6 +109,15 @@ subtest 'Get on root object (list ctx)' => sub {
             isnt($_->name, $tag, 'Object name seems ok');
         }
     };
+};
+
+subtest 'Get on root object, >= 2 deep' => sub {
+    my $tag = 'Provisional_description';
+    my $obj = $obj->get($tag);
+    ok($obj, 'Got object');
+    likely_tree_ok($obj);
+    is($obj->class, 'tag', 'Object class ok');
+    is($obj->name, $tag, 'Object name ok');
 };
 
 done_testing;
