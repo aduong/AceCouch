@@ -85,4 +85,28 @@ subtest 'Col on unfilled obj' => sub {
     };
 };
 
+ok(! $obj->get('THIS_DOES_NOT_EXIST'), 'Invalid get on root object ok');
+
+subtest 'Get on root object (scalar ctx)' => sub {
+    my $tag = 'Map_info';
+    my $tree = $obj->get($tag);
+    ok($tree, 'Got object');
+    likely_tree_ok($tree);
+    is($tree->class, 'tag', 'Object class ok');
+    is($tree->name, $tag, 'Object name ok');
+};
+
+subtest 'Get on root object (list ctx)' => sub {
+    my $tag = 'Map_info';
+    my @subtrees = $obj->get($tag);
+    ok(@subtrees, 'Got object(s)');
+    subtest 'Objects ok' => sub {
+        foreach (@subtrees) {
+            likely_tree_ok($_);
+            is($_->class, 'tag', 'Object class ok');
+            isnt($_->name, $tag, 'Object name seems ok');
+        }
+    };
+};
+
 done_testing;

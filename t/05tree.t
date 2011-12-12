@@ -1,6 +1,7 @@
 use common::sense;
 use Test::More;
 use Test::Deep;
+use Test::Exception;
 use AceCouch::Test::Util;
 
 my $ac = connect();
@@ -115,6 +116,41 @@ subtest 'Fetch on tree node' => sub {
     ok(! $subtree->tree, 'Object is not tree');
     is($subtree->class, 'RNAi', 'Object class ok');
     like($subtree->id, qr/^RNAi/, 'Object ID ok');
+};
+
+throws_ok { $obj->row } 'AC::E', 'Row fails on multiple subtrees';
+
+subtest 'Row on tree node' => sub {
+    my $tag = 'Status';
+    $tree = $obj->get($tag);
+    my @row = $tree->row; # in the future, this may fail due to new data...
+    ok(@row > 1, 'Got row ok') or ddump($tree, \@row);
+};
+
+$tree = $obj->at('Gene_info');
+
+ok(! $tree->get('THIS_DOES_NOT_EXIST'), 'Invalid get on tree ok');
+
+subtest 'Get on tree (scalar ctx)' => sub {
+    my $tag = 'Structured_description';
+    my $subtree = $tree->get($tag);
+    ok($subtree, 'Got object ok');
+    likely_tree_ok($subtree);
+    is($subtree->class, 'tag', 'Object class ok');
+    is($subtree->name, $tag, 'Object name ok');
+};
+
+subtest 'Get on tree (list ctx)' => sub {
+    my $tag = 'Structured_description';
+    my @subtrees = $tree->get($tag);
+    ok(@subtrees, 'Got object(s) ok');
+    subtest 'Objects ok' => sub {
+        foreach (@subtrees) {
+            likely_tree_ok($_);
+            is($_->class, 'tag', 'Object class ok');
+            isnt($_->name, $tag, 'Object name likely ok')
+        }
+    };
 };
 
 done_testing;

@@ -30,7 +30,7 @@ sub likely_tree_ok {
     subtest 'Object likely tree' => sub {
         ok(! $obj->filled, 'Object unfilled');
         ok($obj->tree, 'Object tree');
-        ok(0 + grep { !/^(class|name|_)/ } keys %{$obj->data}, 'Object has content');
+        ok($obj->data, 'Object has content');
     };
 }
 
