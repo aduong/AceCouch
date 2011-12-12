@@ -1,5 +1,6 @@
 use common::sense;
 use Test::More;
+use Test::Deep;
 use AceCouch::Test::Util;
 
 my $ac = connect();
@@ -8,7 +9,7 @@ my ($class, $name) = (Gene => 'WBGene00000018');
 my $obj = $ac->fetch($class => $name);
 
 my $tree;
-subtest 'At on object, simple' => sub {
+subtest 'At on object, simple (scalar ctx)' => sub {
     my $tag = 'Gene_info';
     ok($tree = $obj->at($tag), 'Got subtree');
     ok($tree->tree, 'Subtree is tree');
@@ -17,7 +18,14 @@ subtest 'At on object, simple' => sub {
     is($tree->name, $tag, 'Subtree has correct name');
 };
 
-subtest 'At on object, path' => sub {
+subtest 'At on object, simple (list ctx)' => sub {
+    my $tag = 'Gene_info';
+    my @subtrees = sort $obj->at($tag);
+    my @expected = sort $obj->$tag; # ?
+    cmp_deeply(\@subtrees, \@expected, 'Result ok');
+};
+
+subtest 'At on object, path (scalar ctx)' => sub {
     my @path = qw(Gene_info Ortholog_other);
     my $subtree = $obj->at(join '.', @path);
     ok($subtree, 'Got subtree');
@@ -27,7 +35,15 @@ subtest 'At on object, path' => sub {
     is($subtree->name, $path[-1], 'Subtree has correct name');
 };
 
-subtest 'At on tree, simple' => sub {
+subtest 'At on object, path (list ctx)' => sub {
+    my @path = qw(Gene_info Ortholog_other);
+    my $tag = $path[-1];
+    my @subtrees = sort $obj->at(join '.', @path);
+    my @expected = sort $obj->$tag; # ?
+    cmp_deeply(\@subtrees, \@expected, 'Result ok');
+};
+
+subtest 'At on tree, simple (scalar ctx)' => sub {
     my $tag = 'Ortholog_other';
     my $subtree = $tree->at($tag);
     ok($subtree, 'Got subtree');
@@ -37,7 +53,14 @@ subtest 'At on tree, simple' => sub {
     is($subtree->name, $tag, 'Subtree has correct name');
 };
 
-subtest 'At on tree, path' => sub {
+subtest 'At on tree, simple (list ctx)' => sub {
+    my $tag = 'Ortholog_other';
+    my @subtrees = sort $tree->at($tag); # reminder: $tree = Gene_info tree
+    my @expected = sort $obj->$tag;
+    cmp_deeply(\@subtrees, \@expected, 'Result ok');
+};
+
+subtest 'At on tree, path (scalar ctx)' => sub {
     my @path = qw(Structured_description Provisional_description);
     my $subtree = $tree->at(join '.', @path);
     ok($subtree, 'Got subtree');
@@ -45,6 +68,14 @@ subtest 'At on tree, path' => sub {
     ok(! $subtree->filled, 'Subtree is "unfilled"');
     is($subtree->class, 'tag', 'Subtree has correct class');
     is($subtree->name, $path[-1], 'Subtree has correct name');
+};
+
+subtest 'At on tree, path (list ctx)' => sub {
+    my @path = qw(Structured_description Provisional_description);
+    my $tag = $path[-1];
+    my @subtrees = sort $tree->at(join '.', @path);
+    my @expected = sort $obj->$tag;
+    cmp_deeply(\@subtrees, \@expected, 'Result ok');
 };
 
 subtest 'Col on tree' => sub {

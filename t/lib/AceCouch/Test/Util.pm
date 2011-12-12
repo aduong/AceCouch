@@ -11,8 +11,8 @@ our @EXPORT_OK;
 sub connect {
     AceCouch->new(
         name => 'ws228',
-        host => 'localhost',
-        port => 5984,
+        host => $ENV{COUCH_HOST} || 'localhost',
+        port => $ENV{COUCH_PORT} || 5984,
     );
 }
 

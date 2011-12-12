@@ -55,32 +55,49 @@ sub AUTOLOAD {
     return $self->db->fetch(%params);
 }
 
-sub new { # TODO: fix this nastiness
-    my ($class, $args) = @_;
+# sub new { # TODO: fix this nastiness
+#     my ($class, $args) = @_;
 
-    return bless $args, $class;
-}
+#     return bless $args, $class;
+# }
 
 ## specific constructors... mild code duplication for now
 
 sub new_unfilled {
     my ($class, $db, $id) = @_;
-    my ($c, $n) = split /~/, $id, 2;
-    return bless { db => $db, id => $id, data => { class => $c, name => $n } },
-                 $class;
+    my ($c, $n) = AceCouch->id2cn($id);
+
+    return bless { db => $db, id => $id, class => $c, name => $n }, $class;
 }
 
 sub new_filled {
     my ($class, $db, $id, $data) = @_;
+    my ($c, $n) = AceCouch->id2cn($id);
+    delete @{$data}{'class','name'};
 
-    return bless { db => $db, id => $id, filled => 1, data => $data }, $class;
+    return bless {
+        db     => $db,
+        id     => $id,
+        class  => $c,
+        name   => $n,
+        filled => 1,
+        data   => $data,
+    }, $class;
 }
 
 sub new_tree {
     my ($class, $db, $id, $data) = @_;
-    @{$data}{'class','name'} = split /~/, $id, 2; # even trees have names and classes...
+    my ($c, $n) = AceCouch->id2cn($id); # even trees have names and classes...
+    delete @{$data}{'class','name'}; # just in case; probably not needed
 
-    return bless { db => $db, id => $id, tree => 1, data => $data }, $class;
+    return bless {
+        db    => $db,
+        id    => $id,
+        class => $c,
+        name  => $n,
+        tree  => 1,
+        data  => $data,
+    }, $class;
 }
 
 sub DESTROY {}
@@ -88,8 +105,8 @@ sub DESTROY {}
 # a few things don't make sense if the object is a subtree
 
 sub id     { shift->{id} }
-sub name   { shift->{data}{name} }
-sub class  { shift->{data}{class} }
+sub name   { shift->{name} }
+sub class  { shift->{class} }
 sub data   { shift->{data} }
 sub db     { shift->{db} }
 
@@ -133,23 +150,24 @@ sub isObject {
     $self->db->isClass($self->class);
 }
 
+# works like AcePerl but does not yet support a positional index (WB
+# doesn't quite need this, but it can be done)
 sub col { # implicitly fills an object
     my $self = shift;
     AC::E::Unimplemented->throw('Positional index not yet supported') if @_;
 
-    if ($self->tree or $self->filled) {
-        # FIXME: look at grep; there must be a better way. data restructure?
-        return map {
-            AceCouch::Object->new_unfilled($self->db, $_)
-        }
-        grep { $_ !~ /^(class|name|_)/ }
-        keys %{$self->data};
-    }
+    $self->fill unless $self->tree;
 
-    # neither tree nor filled, i.e. unfilled object
-    $self->fill->col;
+    return map {
+        AceCouch::Object->new_unfilled($self->db, $_)
+    }
+    grep { !/^_/ }
+    keys %{$self->data};
 }
 
+# works like AcePerl but won't support right on trees with more than
+# one entry i.e. $tree->col > 1 (will throw exception instead of
+# randomly returning a subtree)
 sub right { # emulate via col
     my $self = shift;
     AC::E::Unimplemented->throw('Positional index not yet supported') if @_;
@@ -157,7 +175,7 @@ sub right { # emulate via col
 
     $self->fill unless $self->tree; # if filled already, fill will return
 
-    my @obj_ids = grep { $_ !~ /^(class|name|_)/ } keys %{$self->data}
+    my @obj_ids = grep { !/^_/ } keys %{$self->data}
         or return;
 
     AC::E->throw('Ambiguous call to right') if @obj_ids > 1;
@@ -167,9 +185,13 @@ sub right { # emulate via col
     );
 }
 
-sub at { # this doesn't require emulation :)
+# works the same as AcePerl but does not (yet) support \. in path
+# parts and will not support indices due to the inherent lack of order
+sub at {
     my $self = shift;
     my $path = shift;
+
+    return $self->right unless defined $path;
 
     $self->fill unless $self->tree; # if filled already, fill will return
 
@@ -179,18 +201,44 @@ sub at { # this doesn't require emulation :)
         $subhash = $subhash->{$subid} or last;
     }
 
-    return AceCouch::Object->new_tree($self->db, $subid, $subhash) if $subhash;
-    return;
+    return unless $subhash;
+
+    if (wantarray) { # in list ctx, return subtrees to the right
+        return map { AceCouch::Object->new_tree($self->db, $_, $subhash->{$_}) }
+                   keys %$subhash;
+    }
+
+    return AceCouch::Object->new_tree($self->db, $subid, $subhash);
 }
 
+# works the same as AcePerl
 sub tags {
     my $self = shift;
 
     $self->fill unless $self->tree;
 
     return map { (my $t = $_) =~ s/tag~//; $t }
-           grep { $_ =~ /^tag~/ }
+           grep { /^tag~/ }
            keys %{$self->data};
+}
+
+sub row {
+    my $self = shift;
+
+    $self->fill unless $self->tree;
+
+    my @row;
+    my $obj = $self;
+    my $fetch;
+    while ($obj) {
+        # basically a clone + fetch:
+        $fetch = AceCouch::Object->new_unfilled($obj->db, $obj->id);
+        push @row, $fetch;
+        eval { $obj = $obj->right };
+        if (my $e = $@) { ref $e ? $e->rethrow : die $e }
+    }
+
+    return @row;
 }
 
 __PACKAGE__
