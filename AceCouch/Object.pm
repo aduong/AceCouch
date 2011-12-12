@@ -184,8 +184,13 @@ sub at { # this doesn't require emulation :)
 }
 
 sub tags {
-    AC::E::Unimplemented->throw('TODO');
-    ...
+    my $self = shift;
+
+    $self->fill unless $self->tree;
+
+    return map { (my $t = $_) =~ s/tag~//; $t }
+           grep { $_ =~ /^tag~/ }
+           keys %{$self->data};
 }
 
 __PACKAGE__

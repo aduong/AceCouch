@@ -18,4 +18,7 @@ $obj = $ac->fetch($class => $name);
 $obj->fetch;
 ok(! $obj->filled, 'Object unfilled when fetched');
 
+my @tags = $obj->tags;
+ok(@tags > 1, 'Got tags');
+
 done_testing;
