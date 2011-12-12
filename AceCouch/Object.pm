@@ -47,8 +47,8 @@ sub AUTOLOAD {
         my $tree = $self->db->fetch(%params, tree => 1);
         my $data = $tree->data;
         return map {
-            return if /^_/;
-            AceCouch::Object->new_tree($self->db, $_, $data->{$_});
+            !/^_/ ? AceCouch::Object->new_tree($self->db, $_, $data->{$_})
+                  : (); 
         }
         keys %$data;
     }
@@ -166,8 +166,8 @@ sub col { # implicitly fills an object
     $self->fill unless $self->tree;
 
     return map {
-        return if /^_/;
-        AceCouch::Object->new_unfilled($self->db, $_)
+        !/^_/ ? AceCouch::Object->new_unfilled($self->db, $_)
+              : ();
     }
     keys %{$self->data};
 }
@@ -224,7 +224,7 @@ sub tags {
 
     $self->fill unless $self->tree;
 
-    return map { (my $t = $_) =~ s/tag~// or return; $t }
+    return map { s/tag~// and $_ or () }
            keys %{$self->data};
 }
 
