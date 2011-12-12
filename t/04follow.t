@@ -50,49 +50,24 @@ subtest 'Follow tag (list ctx)' => sub {
     subtest 'List of interactions ok' => sub {
         for my $i (@interactions) {
             isa_ok($i, 'AceCouch::Object');
-            ok(! $i->filled, 'Interaction unfilled');
-            is($i->class, 'Interaction', 'Object class ok');
+            likely_tree_ok($i);
         }
     };
 };
 
-subtest 'Follow tag, filled (list ctx)' => sub {
-    my $tag = 'Interaction';
-    my @interactions = $obj->$tag(-fill => 1);
-    ok(@interactions > 1, 'Followed multiple Interactions');
-    subtest 'List of interactions ok' => sub {
-        for my $i (@interactions) {
-            isa_ok($i, 'AceCouch::Object');
-            is($i->class, 'Interaction', 'Object class ok');
-            likely_filled_ok($i) or ddump($i);
-        }
-    };
-};
-
-my $tree;
-subtest 'Follow tag, tree' => sub {
-    my $tag = 'Gene_info';
-    ok($tree = $obj->$tag(0), 'Followed Gene info');
-    isa_ok($tree, 'AceCouch::Object');
-    ok($tree->tree, 'Object is tree');
-    ok(! $tree->filled, 'Object is unfilled');
-    is($tree->class, 'tag', 'Class of tree ok');
-    is($tree->name, 'Gene_info', 'Name of tree ok');
-    is($tree->id, AceCouch->cn2id($tree->class, $tree->name), 'ID of tree ok');
-};
-
-subtest 'Col on tree' => sub {
-    my @tags = $tree->col; # Gene_info column is full of tags
-    ok(@tags > 1, 'Col got multiple objects');
-    subtest 'List of objects ok' => sub {
-        for my $t (@tags) {
-            isa_ok($t, 'AceCouch::Object');
-            ok(! $t->tree, 'Object is not tree');
-            ok(! $t->filled, 'Object is unfilled');
-            is($t->class, 'tag', 'Object is a tag');
-        }
-    };
-};
+## the following test doesn't make sense
+# subtest 'Follow tag, filled (list ctx)' => sub {
+#     my $tag = 'Interaction';
+#     my @interactions = $obj->$tag(-fill => 1);
+#     ok(@interactions > 1, 'Followed multiple Interactions');
+#     subtest 'List of interactions ok' => sub {
+#         for my $i (@interactions) {
+#             isa_ok($i, 'AceCouch::Object');
+#             is($i->class, 'Interaction', 'Object class ok');
+#             likely_filled_ok($i);
+#         }
+#     };
+# };
 
 subtest 'Col on unfilled obj' => sub {
     $obj = $ac->fetch($class => $name);

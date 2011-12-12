@@ -138,7 +138,7 @@ sub id2cn {
 
 sub isClass {
     shift;
-    $nonclass{$_[0]};
+    ! $nonclass{$_[0]};
 }
 
 sub _connect {
