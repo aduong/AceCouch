@@ -6,6 +6,13 @@ use AceCouch::Object;
 use AceCouch::Exceptions;
 use URI::Escape;
 
+BEGIN {
+    *connect = \&new;
+}
+
+my %nonclass = map { $_=>1 }
+    qw(float int date tag txt peptide dna scalar text Text comment);
+
 sub new {
     my $class = shift;
     my %params = @_ == 1 ? %{$_[0]} : @_;
@@ -93,10 +100,12 @@ sub fetch {
         }
 
         return map {
+            # FIXME: problems when class is not an Object class
+            my $class = $_;
             $db = $self->{_classdb}->{$class} //= $self->_connect($class);
             map {
-                return unless defined $_->{doc} or $_->{class} eq 'tag';
-                AceCouch::Object->new_filled($self, $_, $_->{doc});
+                return unless defined $_->{doc};
+                AceCouch::Object->new_filled($self, $_->{id}, $_->{doc});
             } @{ $db->open_docs( $objs_by_class{$class} )->recv->{rows} };
         } keys %objs_by_class;
     }
@@ -117,9 +126,19 @@ sub fetch {
     return AceCouch::Object->new_unfilled($self, $id);
 }
 
+sub cn2id {
+    shift;
+    "$_[0]~$_[1]";
+}
+
 sub id2cn {
     shift;
     split /~/, shift, 2
+}
+
+sub isClass {
+    shift;
+    $nonclass{$_[0]};
 }
 
 sub _connect {

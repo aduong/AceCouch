@@ -4,8 +4,8 @@ use common::sense;
 use AceCouch::Exceptions;
 
 use overload (
-    '""'       => 'as_string',
-    'fallback' => 'TRUE',
+    '""'     => 'as_string',
+    fallback => 'TRUE',
 );
 
 BEGIN {
@@ -13,12 +13,12 @@ BEGIN {
     *isClass   = \&isObject;
 }
 
+# TODO: caching results
+
 sub AUTOLOAD {
     our $AUTOLOAD;
     my ($tag) = $AUTOLOAD =~ /.*::(.+)/;
     my $self = shift;
-
-    # TODO: if the object is filled, we don't need to fetch it from the db
 
     my ($fill, $tree); # both cannot be true...
 
@@ -91,7 +91,11 @@ sub fill { # destructive. fills an unfilled object
     my $self = shift;
 
     if ( !$self->filled and $self->isObject) {
-        my $filled = $self->db->fetch($self->id, filled => 1);
+        my $filled = $self->db->fetch(
+            class  => $self->class,
+            name   => $self->name,
+            filled => 1
+        );
         %$self = %$filled;
     }
 
@@ -111,7 +115,8 @@ sub fetch { # destructive. fetches an unfilled object if tree
 
 sub isTag  { shift->class eq 'tag' }
 sub isObject {
-    shift->class !~ /^(float|int|date|tag|txt|peptide|dna|scalar|[Tt]ext|comment)$/;
+    my $self = shift;
+    $self->db->isClass($self->class);
 }
 
 sub col { # implicitly fills an object
@@ -119,8 +124,10 @@ sub col { # implicitly fills an object
     AC::E::Unimplemented->throw('Positional index not yet supported') if @_;
 
     if ($self->tree or $self->filled) {
+        # FIXME: look at grep; there must be a better way. data restructure?
         return map { AceCouch::Object->new_unfilled($self->db, $_) }
-               grep { $_ ne 'class' and $_ ne 'name' } keys %{$self->data};
+               grep { $_ !~ /^_/ and $_ ne 'class' and $_ ne 'name' }
+               keys %{$self->data};
     }
 
     # neither tree nor filled, i.e. unfilled object
