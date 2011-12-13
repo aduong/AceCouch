@@ -1,6 +1,7 @@
 use common::sense;
 use Test::More;
 use Test::Deep;
+use AceCouch;
 use AceCouch::Test::Util;
 
 my $ac = connect();
@@ -14,34 +15,37 @@ my $filled_obj = $ac->fetch(
     filled => 1,
 );
 
-subtest 'Follow tag (scalar ctx)' => sub {
-    my $tag = 'Interaction';
-    isa_ok(my $interaction = $obj->$tag, 'AceCouch::Object');
-    is($interaction->class, 'Interaction', 'Object class ok');
-    cmp_deeply(
-        $interaction->name,
-        any(
-            map { (my $a = $_) =~ s/^Interaction~//; $a }
-            keys %{$filled_obj->data->{'tag~Experimental_info'}->{'tag~Interaction'}}
-        )
-    );
-    ok(! $interaction->filled, 'Object unfilled');
-};
+SKIP: {
+    skip 'Will throw ambiguous exception', 2 if AceCouch::THROWS_ON_AMBIGUOUS;
 
+    subtest 'Follow tag (scalar ctx)' => sub {
+        my $tag = 'Interaction';
+        isa_ok(my $interaction = $obj->$tag, 'AceCouch::Object');
+        is($interaction->class, 'Interaction', 'Object class ok');
+        cmp_deeply(
+            $interaction->name,
+            any(
+                map { (my $a = $_) =~ s/^Interaction~//; $a }
+                keys %{$filled_obj->data->{'tag~Experimental_info'}->{'tag~Interaction'}}
+            )
+        );
+        ok(! $interaction->filled, 'Object unfilled');
+    };
 
-subtest 'Follow tag, fill (scalar ctx)' => sub {
-    my $tag = 'Interaction';
-    isa_ok(my $interaction = $obj->$tag(-fill => 1), 'AceCouch::Object');
-    is($interaction->class, 'Interaction', 'Object class ok');
-    cmp_deeply(
-        $interaction->name,
-        any(
-            map { (my $a = $_) =~ s/^Interaction~//; $a }
-            keys %{$filled_obj->data->{'tag~Experimental_info'}->{'tag~Interaction'}}
-        )
-    );
-    likely_filled_ok($interaction);
-};
+    subtest 'Follow tag, fill (scalar ctx)' => sub {
+        my $tag = 'Interaction';
+        isa_ok(my $interaction = $obj->$tag(-fill => 1), 'AceCouch::Object');
+        is($interaction->class, 'Interaction', 'Object class ok');
+        cmp_deeply(
+            $interaction->name,
+            any(
+                map { (my $a = $_) =~ s/^Interaction~//; $a }
+                keys %{$filled_obj->data->{'tag~Experimental_info'}->{'tag~Interaction'}}
+            )
+        );
+        likely_filled_ok($interaction);
+    };
+}
 
 subtest 'Follow tag (list ctx)' => sub {
     my $tag = 'Interaction';

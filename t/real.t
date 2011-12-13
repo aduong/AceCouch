@@ -1,6 +1,7 @@
 use common::sense;
 use Test::More;
 use Test::Exception;
+use AceCouch;
 use AceCouch::Test::Util;
 
 my $ac = connect();
@@ -41,11 +42,14 @@ subtest 'URI-unsafe names' => sub {
     my $tag = 'Expression_cluster';
     %params = (class => 'Gene', name => 'WBGene00000018', tag => $tag);
 
-    subtest 'Exception for ambiguous scalar ctx, tag' => sub {
-        throws_ok { $obj = $ac->fetch(%params) } 'AC::E',
-            'Exception thrown in scalar ctx for tag fetch with multiple objects';
-        like $@, qr/ambiguous/i, 'Exception is ambiguous';
-    };
+  SKIP: {
+        skip 'Exceptions disabled for ambiguous calls', 1 unless AceCouch::THROWS_ON_AMBIGUOUS;
+        subtest 'Exception for ambiguous scalar ctx, tag' => sub {
+            throws_ok { $obj = $ac->fetch(%params) } 'AC::E',
+                'Exception thrown in scalar ctx for tag fetch with multiple objects';
+            like $@, qr/ambiguous/i, 'Exception is ambiguous';
+        };
+    }
 
     {
         local $params{tag} = 'Legacy_information';
@@ -56,11 +60,14 @@ subtest 'URI-unsafe names' => sub {
 
     $params{filled} = 1;
 
-    subtest 'Exception for  ambiguous scalar ctx, tag, fill' => sub {
-        throws_ok { $obj = $ac->fetch(%params) } 'AC::E',
-            'Exception thrown in scalar ctx for tag&fill fetch with multiple objects';
-        like $@, qr/ambiguous/i, 'Exception is ambiguous';
-    };
+  SKIP: {
+        skip 'Exceptions disabled for ambiguous calls', 1 unless AceCouch::THROWS_ON_AMBIGUOUS;
+        subtest 'Exception for  ambiguous scalar ctx, tag, fill' => sub {
+            throws_ok { $obj = $ac->fetch(%params) } 'AC::E',
+                'Exception thrown in scalar ctx for tag&fill fetch with multiple objects';
+            like $@, qr/ambiguous/i, 'Exception is ambiguous';
+        };
+    }
 
     # TODO:
     # subtest 'Scalar ctx, tag, fill ok' => sub {

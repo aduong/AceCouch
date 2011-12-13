@@ -118,13 +118,16 @@ subtest 'Fetch on tree node' => sub {
     like($subtree->id, qr/^RNAi/, 'Object ID ok');
 };
 
-throws_ok { $obj->row } 'AC::E', 'Row fails on multiple subtrees';
+SKIP: {
+    skip 'Exceptions disabled for ambiguous calls', 1 unless AceCouch::THROWS_ON_AMBIGUOUS;
+    throws_ok { $obj->row } 'AC::E', 'Row fails on multiple subtrees';
+}
 
 subtest 'Row on tree node' => sub {
     my $tag = 'Status';
     $tree = $obj->get($tag);
     my @row = $tree->row; # in the future, this may fail due to new data...
-    ok(@row > 1, 'Got row ok') or ddump($tree, \@row);
+    ok(@row > 1, 'Got row ok');
 };
 
 $tree = $obj->at('Gene_info');

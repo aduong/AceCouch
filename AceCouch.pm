@@ -5,6 +5,9 @@ use AnyEvent::CouchDB;
 use AceCouch::Object;
 use AceCouch::Exceptions;
 use URI::Escape::XS qw(uri_escape);
+use Carp qw(carp);
+
+use constant THROWS_ON_AMBIGUOUS => 0;
 
 BEGIN {
     *connect = \&new;
@@ -80,8 +83,12 @@ sub fetch {
 
         # single object or not?
         unless (wantarray) { # single
-            AC::E->throw('Ambiguous fetch; the fetch will result in a random object')
-                if @$obj_ids > 1;
+            if (@$obj_ids > 1) {
+                AC::E->throw('Ambiguous fetch; the fetch would result in a random object')
+                    if THROWS_ON_AMBIGUOUS;
+                carp 'Ambiguous fetch; the fetch will result in a random object';
+            }
+
             $id = $obj_ids->[0];
 
             return AceCouch::Object->new_unfilled($self, $id) unless $params{filled};
