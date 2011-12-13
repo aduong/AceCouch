@@ -7,6 +7,8 @@ use AceCouch::Exceptions;
 use URI::Escape::XS qw(uri_escape);
 use Carp qw(carp);
 
+our $VERSION = 0.95;
+
 use constant THROWS_ON_AMBIGUOUS => 0;
 
 BEGIN {
@@ -152,6 +154,10 @@ sub id2cn {
 sub isClass {
     shift;
     ! $nonclass{$_[0]};
+}
+
+sub version {
+    return "AceCouch v$VERSION";
 }
 
 sub _connect {
