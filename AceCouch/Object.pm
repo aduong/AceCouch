@@ -159,19 +159,27 @@ sub isObject {
     $self->db->isClass($self->class);
 }
 
-# works like AcePerl but does not yet support a positional index (WB
-# doesn't quite need this, but it can be done)
+# works like AcePerl
 sub col { # implicitly fills an object
     my $self = shift;
+    my $pos = shift || 1;
     AC::E::Unimplemented->throw('Positional index not yet supported') if @_;
 
     $self->fill unless $self->tree;
 
-    return map {
-        !/^_/ ? AceCouch::Object->new_unfilled($self->db, $_)
-              : ();
+    my $data = $self->data;
+    my @objs = ([ undef => $self->data ]);
+
+    for (1..$pos) { # traverse level by level
+        @objs = map {
+            my $hash = $_->[1];
+            ref $hash ? map { [ $_ => $hash->{$_} ] } keys %$hash : ()
+        } @objs;
     }
-    keys %{$self->data};
+
+    return map {
+        $_->[0] !~ /^_/ ? AceCouch::Object->new_unfilled($self->db, $_->[0]) : ();
+    } @objs;
 }
 
 # works like AcePerl but won't support right on trees with more than

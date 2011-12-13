@@ -89,6 +89,18 @@ subtest 'Col on unfilled obj' => sub {
     };
 };
 
+subtest 'Col on obj, index >= 2' => sub {
+    my @objs = $obj->col(3);
+    ok(@objs > 10, 'Col got multiple objects');
+    subtest 'List of objects ok' => sub {
+        foreach (@objs) {
+            isa_ok($_, 'AceCouch::Object');
+            ok(! $_->tree, 'Object is not tree');
+            ok(! $_->filled, 'Object is unfilled');
+        }
+    };
+};
+
 ok(! $obj->get('THIS_DOES_NOT_EXIST'), 'Invalid get on root object ok');
 
 # there's some overlap with tree below

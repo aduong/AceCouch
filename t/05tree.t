@@ -92,6 +92,18 @@ subtest 'Col on tree' => sub {
     };
 };
 
+subtest 'Col on tree, positional index >= 2' => sub {
+    my @objs = $tree->col(2); # going to be lots of stuff...
+    ok(@objs > 100, 'Col got multiple objects');
+    subtest 'List of objects ok' => sub {
+        foreach (@objs) {
+            isa_ok($_, 'AceCouch::Object');
+            ok(! $_->tree, 'Object is not tree');
+            ok(! $_->filled, 'Object is not unfilled');
+        }
+    };
+};
+
 # subtest 'Right on object' => sub {} # no object...
 
 subtest 'Right on tree' => sub {
