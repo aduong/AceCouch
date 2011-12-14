@@ -42,17 +42,19 @@ sub AUTOLOAD {
     );
 
     if (wantarray) { # identical to get()
-        # does $fill make sense here??
-        my $tree = $self->db->fetch(%params, tree => 1);
+        my $tree = $self->{cache}->{tree}->{$tag}
+               //= $self->db->fetch(%params, tree => 1);
+
+        return unless defined $tree;
         my $data = $tree->data;
+
         return map {
             !/^_/ ? AceCouch::Object->new_tree($self->db, $_, $data->{$_})
                   : ();
-        }
-        keys %$data;
+        } keys %$data; # can we cache this?
     }
 
-    return $self->db->fetch(%params);
+    return $self->{cache}->{tag}->{$tag} //= $self->db->fetch(%params);
 }
 
 # sub new { # TODO: fix this nastiness
