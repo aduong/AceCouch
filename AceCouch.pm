@@ -9,7 +9,13 @@ use Carp qw(carp);
 
 our $VERSION = 0.95;
 
-use constant THROWS_ON_AMBIGUOUS => 0;
+our $THROWS_ON_AMBIGUOUS;
+BEGIN {
+    $THROWS_ON_AMBIGUOUS //= 1;
+    $THROWS_ON_AMBIGUOUS = !! $THROWS_ON_AMBIGUOUS;
+}
+
+use constant THROWS_ON_AMBIGUOUS => $THROWS_ON_AMBIGUOUS;
 
 BEGIN {
     *connect = \&new;
@@ -62,12 +68,6 @@ sub fetch {
     my $db = $self->{_classdb}->{$class} //= $self->_connect($class);
     my $id = $params{id} // $self->cn2id($class, $name);
         # should be abstracted into AceCouch::Object?
-
-    # performance:
-    # tag filled      2 reqs (view, bulk fetch if wantarray, otherwise fetch)
-    # tag unfilled    2 reqs (view)
-    # notag filled    1 req  (fetch)
-    # notag unfilled  1 req  (head)
 
     if ($params{tag}) {
         my $view = ($params{tree} ? 'tree' : 'tag') . '/' . $params{tag};

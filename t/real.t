@@ -26,25 +26,7 @@ subtest 'URI-unsafe names' => sub {
     ok($obj = $ac->fetch(%params), 'Scalar ctx, tag ok');
     ok(@objs = $ac->fetch(%params), 'List ctx, tag ok');
 
-  SKIP: {
-        skip 'Exceptions disabled for ambiguous calls', 1 unless AceCouch::THROWS_ON_AMBIGUOUS;
-        subtest 'Exception for ambiguous scalar ctx, tag' => sub {
-            throws_ok { $obj = $ac->fetch(%params) } 'AC::E',
-                'Exception thrown in scalar ctx for tag fetch with multiple objects';
-            like $@, qr/ambiguous/i, 'Exception is ambiguous';
-        };
-    }
-
     $params{filled} = 1;
-
-  SKIP: {
-        skip 'Exceptions disabled for ambiguous calls', 1 unless AceCouch::THROWS_ON_AMBIGUOUS;
-        subtest 'Exception for  ambiguous scalar ctx, tag, fill' => sub {
-            throws_ok { $obj = $ac->fetch(%params) } 'AC::E',
-                'Exception thrown in scalar ctx for tag&fill fetch with multiple objects';
-            like $@, qr/ambiguous/i, 'Exception is ambiguous';
-        };
-    }
 
     ok($obj = $ac->fetch(%params), 'Scalar ctx, tag, fill ok' );
     ok(@objs = $ac->fetch(%params), 'List ctx, tag, fill ok' );

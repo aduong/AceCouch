@@ -193,9 +193,9 @@ sub right { # emulate via col
         or return;
 
     if (@obj_ids > 1) {
-        AC::E->throw('Ambiguous call to right; the call would result in a psuedo-random object')
-            if AceCouch::THROWS_ON_AMBIGUOUS();
-        carp 'Ambiguous call to right; the call will result in a pseudo-random object';
+        AC::E->throw('Ambiguous call to right; the call would return a psuedo-random object')
+            if AceCouch->THROWS_ON_AMBIGUOUS;
+        carp 'Ambiguous call to right; the call will return a pseudo-random object';
     }
 
     return AceCouch::Object->new_tree(
