@@ -43,6 +43,18 @@ sub name { shift->{name} }
 sub host { shift->{host} }
 sub port { shift->{port} }
 
+sub raw_fetch { # $object, $tag
+    my ($self, $obj, $tag) = @_;
+    return eval {
+        $self->fetch(
+            class => $obj->class,
+            name  => $obj->name,
+            tag   => $tag,
+            raw   => 1,
+        );
+    };
+}
+
 # class, name, filled (bool), tag
 sub fetch {
     my $self = shift;
@@ -71,7 +83,6 @@ sub fetch {
 
     if ($params{tag}) {
         my $view = ($params{tree} ? 'tree' : 'tag') . '/' . $params{tag};
-        # if $params{tree}, then this is $obj->Tag(0)
 
         $view = $db->view($view, { key => uri_escape($id) })->recv->{rows}->[0]->{value};
 
@@ -93,6 +104,7 @@ sub fetch {
 
             $id = $obj_ids->[0];
 
+            return ($self->id2cn($id))[1] if $params{raw};
             return AceCouch::Object->new_unfilled($self, $id) unless $params{filled};
 
             $class = ($self->id2cn($id))[0];
@@ -104,7 +116,8 @@ sub fetch {
 
         # want many objects
 
-        return map AceCouch::Object->new_unfilled($self, $_), @$obj_ids
+        return map { $self->id2cn($_) } @$obj_ids if $params{raw};
+        return map { AceCouch::Object->new_unfilled($self, $_) } @$obj_ids
             unless $params{filled};
 
         # will have to bulk fetch by class
@@ -134,13 +147,19 @@ sub fetch {
 
     # just want a "reference" to the object in the db
 
-    # check if the object exists via HEAD
-    my $response = $db->head( uri_escape( uri_escape($id) ) )->recv
-        or AC::E->throw(qq/Could not send HEAD for "$id"/);
-
-    return unless $response->{Status} =~ /^2/; # object doesn't exist
-
     return AceCouch::Object->new_unfilled($self, $id);
+}
+
+sub get_path {
+    my ($self, $class, $tag) = @_;
+    my $classpaths = $self->{_paths}->{$class} //= eval {
+        my $mdbname = $self->name . '_model';
+        my $mdb = $self->{_classdb}->{$mdbname} //= $self->{_conn}->db($mdbname);
+        $mdb->open_doc($class)->recv;
+        # exceptions here?
+    };
+
+    return $classpaths->{$tag};
 }
 
 sub cn2id {
