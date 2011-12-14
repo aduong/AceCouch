@@ -21,4 +21,7 @@ use Exception::Class (
     },
 );
 
-1;
+AceCouch::Exception->Trace(1);
+AC::E->Trace(1);
+
+__PACKAGE__

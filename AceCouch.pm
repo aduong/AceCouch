@@ -28,7 +28,7 @@ sub new {
         port => $params{port} // 5984,
     };
 
-    $self->{_conn} = AnyEvent::CouchDB->new("http://$params{host}:$params{port}/");
+    $self->{_conn} = AnyEvent::CouchDB->new("http://$self->{host}:$self->{port}/");
 
     return bless $self, $class;
 }
@@ -73,7 +73,7 @@ sub fetch {
         my $view = ($params{tree} ? 'tree' : 'tag') . '/' . $params{tag};
         # if $params{tree}, then this is $obj->Tag(0)
 
-        $view = $db->view($view, { key => $id })->recv->{rows}->[0]->{value};
+        $view = $db->view($view, { key => uri_escape($id) })->recv->{rows}->[0]->{value};
 
         return AceCouch::Object->new_tree($self, "tag~$params{tag}", $view)
             if $params{tree};
@@ -97,7 +97,9 @@ sub fetch {
 
             $class = ($self->id2cn($id))[0];
             $db = $self->{_classdb}->{$class} //= $self->_connect($class);
-            return AceCouch::Object->new_filled($self, $id, $db->open_doc($id)->recv);
+            return AceCouch::Object->new_filled(
+                $self, $id, $db->open_doc( uri_escape($id) )->recv
+            );
         }
 
         # want many objects
