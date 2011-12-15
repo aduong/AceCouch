@@ -146,6 +146,10 @@ sub fetch {
         if $params{filled};
 
     # just want a "reference" to the object in the db
+    my $response = $db->head( uri_escape( uri_escape($id) ) )->recv
+        or AC::E->throw(qq/Could not send HEAD for "$id"/);
+
+    return unless $response->{Status} =~ /^2/; # object likely doesn't exist
 
     return AceCouch::Object->new_unfilled($self, $id);
 }
@@ -179,6 +183,10 @@ sub isClass {
 
 sub version {
     return "AceCouch v$VERSION";
+}
+
+sub ping {
+    !! eval { shift->{_conn}->info->recv };
 }
 
 sub _connect {
