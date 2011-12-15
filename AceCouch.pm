@@ -189,6 +189,10 @@ sub ping {
     !! eval { shift->{_conn}->info->recv };
 }
 
+sub reopen {
+    shift->ping; # just ping and things should be fine?
+}
+
 sub _connect {
     my ($self, $class) = @_;
     my $dbs = $self->{_conn}->all_dbs->recv;
