@@ -16,6 +16,8 @@ BEGIN {
     *isClass   = \&isObject;
 }
 
+# TODO: smarter caching
+
 sub AUTOLOAD {
     our $AUTOLOAD;
     my ($tag) = $AUTOLOAD =~ /.*::(.+)/;
@@ -28,9 +30,7 @@ sub AUTOLOAD {
     # 2. -fill TODO
 
     my $position;
-    if (@_ == 1) {
-        $position = shift;
-    }
+    $position = shift if @_ == 1;
 
     return $self->get($tag, $position) if wantarray;
 
@@ -60,7 +60,7 @@ sub new_filled {
         class  => $c,
         name   => $n,
         filled => 1,
-        data   => $data,
+        _data   => $data,
     }, $class;
 }
 
@@ -75,7 +75,7 @@ sub new_tree {
         class => $c,
         name  => $n,
         tree  => 1,
-        data  => $data,
+        _data  => $data,
     }, $class;
 }
 
@@ -86,7 +86,7 @@ sub DESTROY {}
 sub id     { shift->{id} }
 sub name   { shift->{name} }
 sub class  { shift->{class} }
-sub data   { shift->{data} }
+sub data   { shift->{_data} }
 sub db     { shift->{db} }
 
 # convention: filled and tree are mutually exclusive. filled
@@ -229,8 +229,12 @@ sub tags {
 
 sub row {
     my $self = shift;
+    my $pos  = shift // 0;
 
-    $self->fill unless $self->tree;
+    eval { $self = $self->right($pos) };
+    if (my $e = $@) {
+        ref $e ? $e->rethrow : die $e;
+    }
 
     my @row;
     my $obj = $self;
@@ -240,7 +244,9 @@ sub row {
         $fetch = AceCouch::Object->new_unfilled($obj->db, $obj->id);
         push @row, $fetch;
         eval { $obj = $obj->right };
-        if (my $e = $@) { ref $e ? $e->rethrow : die $e }
+        if (my $e = $@) {
+            ref $e ? $e->rethrow : die $e;
+        }
     }
 
     return @row;
@@ -253,45 +259,44 @@ sub get { # only supporting positional index after tag
     AC::E::Unimplemented->throw('Get does not (yet?) support non-positional args')
         if @_;
 
+    my $id = "tag~$tag";
     my $db = $self->db;
-    my $tree = $self->{cache}{tree}{$tag};
+    my $tree = $self->_find_tree($tag);
     unless (defined $tree) {
         if ($self->isRoot) { # don't do bfs, just query view
             $tree = eval {
                 $db->fetch(
                     class => $self->class,
                     name  => $self->name,
-                    tree  => 1,
                     tag   => $tag,
+                    tree  => 1,
                 )
-            } or return;
+            };
         }
-        else { # we're in a tree
-            my @q = ($self->data);
+        else { # we're in a tree... do the BFS and cache along the way
+            my @q = ([$self->id, $self->data]);
 
-            my $id = "tag~$tag";
-            my $data;
-            while ($data = shift @q) {
+            my ($key, $data);
+            while (my $pair = shift @q) {
+                ($key, $data) = @$pair;
                 next unless $data; # null or hashref
+
                 if ($data->{$id}) {
-                    $data = $data->{$id};
+                    $tree = $data->{$id};
                     last;
                 }
-                push @q, values %$data;
+                push @q, map { [ $_ => $data->{$_} ] } keys %$data;
             }
-
-            return unless $data;
-            $tree = AceCouch::Object->new_tree($db, $id, $data);
         }
-        $self->_attach_tree($tag => $tree);
+        return unless defined $tree;
+        $tree = $self->_attach_tree($tag => $tree);
     }
 
     unless (defined $position) {
-        return $tree unless wantarray;
+        return AceCouch::Object->new_tree($db, $id, $tree) unless wantarray;
 
-        my $data = $tree->data;
-        return map { AceCouch::Object->new_tree($db, $_, $data->{$_}) }
-            keys %$data;
+        return map { AceCouch::Object->new_tree($db, $_, $tree->{$_}) }
+            keys %$tree;
     }
 
     # oh boy, positional index provided
@@ -318,16 +323,34 @@ sub get { # only supporting positional index after tag
     return AceCouch::Object->new_tree( $db, @{$data[0]} );
 }
 
-sub _attach_tree {
+sub _find_tree {
+    my ($self, $tag) = @_;
+
+    my $tree = $self->{_cache}{$tag}; # obvious place to look
+    return if defined $tree;
+
+    my $data = $self->data or return; # this object isn't even filled at all!
+    my $path = $self->db->get_path($self->class => $tag);
+
+    foreach (@$path, $tag) {
+        $data = $data->{"tag~$_"} or return;
+    }
+
+    return $self->{_cache}{$tag} = $data;
+}
+
+sub _attach_tree { # should add subtrees to the top-level cache too
     my ($self, $tag, $tree) = @_;
 
-    $self->{cache}{tree}{$tag} = $tree;
+    $tree = $tree->data if ref $tree eq 'AceCouch::Object';
+
     my $path = $self->db->get_path($self->class => $tag);
     my $hash = $self->{_data} //= {};
 
-    $hash = $hash->{$_} = {} foreach @$path;
+    $hash = $hash->{"tag~$_"} //= {} foreach @$path;
+    $hash->{"tag~$tag"} = $tree;
 
-    $hash->{$tag} = $tree;
+    $self->{_cache}{$tag} = $tree;
 }
 
 __PACKAGE__

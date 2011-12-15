@@ -84,7 +84,8 @@ sub fetch {
     if ($params{tag}) {
         my $view = ($params{tree} ? 'tree' : 'tag') . '/' . $params{tag};
 
-        $view = $db->view($view, { key => uri_escape($id) })->recv->{rows}->[0]->{value};
+        $view = $db->view($view, { key => uri_escape($id) })->recv->{rows}->[0]->{value}
+            or return;
 
         return AceCouch::Object->new_tree($self, "tag~$params{tag}", $view)
             if $params{tree};
@@ -92,7 +93,6 @@ sub fetch {
         # not tree, so expect one or more objects depending on context
 
         my $obj_ids = $view;
-        return unless @$obj_ids;
 
         # single object or not?
         unless (wantarray) { # single
@@ -159,8 +159,7 @@ sub get_path {
     my $classpaths = $self->{_paths}->{$class} //= eval {
         my $mdbname = $self->name . '_model';
         my $mdb = $self->{_classdb}->{$mdbname} //= $self->{_conn}->db($mdbname);
-        $mdb->open_doc($class)->recv;
-        # exceptions here?
+        $mdb->open_doc($class)->recv or {}; # no document means don't check again
     };
 
     return $classpaths->{$tag};
