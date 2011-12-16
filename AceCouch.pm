@@ -194,15 +194,13 @@ sub reopen {
 
 sub _connect {
     my ($self, $class) = @_;
-    my $dbs = $self->{_conn}->all_dbs->recv;
+    my $dbs = $self->{_alldbs} //= do {
+        my %dbs = map { $_ => 1 } @{ $self->{_conn}->all_dbs->recv }; \%dbs;
+    };
 
     my $dbname = $self->name . lc "_$class";
-  DBEXISTS: {
-        foreach (@$dbs) {
-            last DBEXISTS if $dbname eq $_;
-        }
-        AC::E::UnknownClass->throw($class . ' is an unknown class in the database');
-    }
+    AC::E::UnknownClass->throw("Could not find the $class class in the database")
+        unless $dbs->{$dbname};
 
     return $self->{_conn}->db($dbname);
 }

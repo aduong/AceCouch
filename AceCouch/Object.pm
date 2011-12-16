@@ -18,8 +18,9 @@ BEGIN {
 
 # TODO: smarter caching
 
+our $AUTOLOAD;
+
 sub AUTOLOAD {
-    our $AUTOLOAD;
     my ($tag) = $AUTOLOAD =~ /.*::(.+)/;
     my $self = shift;
 
@@ -274,18 +275,14 @@ sub get { # only supporting positional index after tag
             };
         }
         else { # we're in a tree... do the BFS and cache along the way
-            my @q = ([$self->id, $self->data]);
-
-            my ($key, $data);
-            while (my $pair = shift @q) {
-                ($key, $data) = @$pair;
-                next unless $data; # null or hashref
-
+            my @q = ($self->data);
+            while (my $data = shift @q) {
+                next unless $data;
                 if ($data->{$id}) {
                     $tree = $data->{$id};
                     last;
                 }
-                push @q, map { [ $_ => $data->{$_} ] } keys %$data;
+                push @q, values %$data;
             }
         }
         return unless defined $tree;
@@ -327,7 +324,7 @@ sub _find_tree {
     my ($self, $tag) = @_;
 
     my $tree = $self->{_cache}{$tag}; # obvious place to look
-    return if defined $tree;
+    return $tree if defined $tree;
 
     my $data = $self->data or return; # this object isn't even filled at all!
     my $path = $self->db->get_path($self->class => $tag);
@@ -344,13 +341,14 @@ sub _attach_tree { # should add subtrees to the top-level cache too
 
     $tree = $tree->data if ref $tree eq 'AceCouch::Object';
 
+    $self->{_cache}{$tag} = $tree;
+    return $tree if $self->tree; # don't need to attach!
+
     my $path = $self->db->get_path($self->class => $tag);
     my $hash = $self->{_data} //= {};
 
     $hash = $hash->{"tag~$_"} //= {} foreach @$path;
     $hash->{"tag~$tag"} = $tree;
-
-    $self->{_cache}{$tag} = $tree;
 }
 
 __PACKAGE__
