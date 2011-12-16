@@ -39,4 +39,10 @@ subtest 'URI-unsafe names' => sub {
     ok(@objs = $ac->fetch(%params), 'List ctx, tag, fill ok (unsafe target)' );
 };
 
+subtest 'Get protein peptide data' => sub {
+    my ($class, $name) = (Protein => 'WP:CE04538');
+    ok(my $protein = $ac->fetch($class => $name), 'Got protein');
+    ok(my $peptide = $protein->Peptide(2), 'Got Peptide(2)');
+};
+
 done_testing;

@@ -298,7 +298,7 @@ sub get { # only supporting positional index after tag
 
     # oh boy, positional index provided
 
-    my @data = ([ $self->id, $self->data ]);
+    my @data = ([ $id, $tree ]);
     for (1..$position) {
         @data = map {
             my $hash = $_->[1];
