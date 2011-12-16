@@ -156,10 +156,10 @@ sub fetch {
 
 sub get_path {
     my ($self, $class, $tag) = @_;
-    my $classpaths = $self->{_paths}->{$class} //= eval {
+    my $classpaths = $self->{_paths}->{$class} //= do {
         my $mdbname = $self->name . '_model';
         my $mdb = $self->{_classdb}->{$mdbname} //= $self->{_conn}->db($mdbname);
-        $mdb->open_doc($class)->recv or {}; # no document means don't check again
+        eval { $mdb->open_doc($class)->recv } or {}; # no document means don't check again
     };
 
     return $classpaths->{$tag};
