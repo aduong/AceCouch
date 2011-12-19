@@ -28,6 +28,8 @@ sub new {
     my $class = shift;
     my %params = @_ == 1 ? %{$_[0]} : @_;
 
+    $params{substr $_, 1} = $params{$_} foreach grep {/^-/} keys %params;
+
     my $self = {
         name => $params{name} // AC::E::RequiredArgument->throw('Need name of DB'),
         host => $params{host} // 'localhost',
@@ -45,6 +47,9 @@ sub port { shift->{port} }
 
 sub raw_fetch { # $object, $tag
     my ($self, $obj, $tag) = @_;
+    AC::E::RequiredArgument->throw('Raw fetch requires object and tag')
+        unless defined $obj and $tag;
+
     return eval {
         $self->fetch(
             class => $obj->class,

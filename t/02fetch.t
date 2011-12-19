@@ -1,6 +1,7 @@
 use common::sense;
 use Test::More;
 use Test::Deep;
+use Test::Exception;
 use AceCouch::Test::Util;
 use AceCouch;
 
@@ -63,6 +64,38 @@ subtest 'Fetch filled, tag (scalar ctx)' => sub {
                'Object id ok');
     is($subobj->db, $ac, 'Object db ok');
     likely_filled_ok($subobj);
+};
+
+throws_ok { $ac->raw_fetch } 'AC::E::RequiredArgument',
+    'Raw fetch, exception thrown when missing arguments';
+
+throws_ok { $ac->raw_fetch($obj) } 'AC::E::RequiredArgument',
+    'Raw fetch, exception thrown when missing tag';
+
+ok(!defined $ac->raw_fetch($obj, 'THIS_IS_NOT_A_TAG'), 'Raw fetch non-existent (fake) tag');
+
+ok(!defined $ac->raw_fetch($obj, 'Molecular_name_for' ), 'Raw fetch data-less tag');
+
+$tag = 'Experimental_info';
+SKIP: {
+    skip 'Will throw ambiguous exception', 1 if AceCouch::THROWS_ON_AMBIGUOUS;
+
+    subtest 'Raw fetch tag, many (scalar ctx)' => sub {
+        $tag = 'Experimental_info';
+        my $val = $ac->raw_fetch($obj, $tag);
+    };
+}
+
+subtest 'Raw fetch tag, single (scalar ctx)' => sub {
+    $tag = 'Method';
+    ok(my $val = $ac->raw_fetch($obj,$tag), 'Fetched a value');
+    unlike($val, qr/^Method~/, 'Value has class removed');
+};
+
+subtest 'Raw fetch tag (list ctx)' => sub {
+    $tag = 'Experimental_info';
+    ok( ( my @tags = $ac->raw_fetch($obj, $tag) ) > 1, 'Fetched multiple values');
+    is(scalar( grep { !/^tag~/ } @tags ), scalar @tags, 'Values have classes removed');
 };
 
 done_testing;
