@@ -136,10 +136,16 @@ SKIP: {
 }
 
 subtest 'Row on tree node' => sub {
-    my $tag = 'Status';
+    my $tag = 'SMap';
     $tree = $obj->get($tag);
-    my @row = $tree->row; # in the future, this may fail due to new data...
-    ok(@row > 1, 'Got row ok');
+    ok( ( my @row = $tree->row ) > 1, 'Got row ok'); # in the future, this may fail due to new data...
+};
+
+subtest 'Positional row ok' => sub {
+    my @expected = $tree->row; # assuming above passed
+    foreach (1..10) {
+        cmp_deeply( [$tree->row($_)], [ @expected[$_..$#expected] ], "row($_) ok" );
+    }
 };
 
 $tree = $obj->at('Gene_info');
@@ -174,6 +180,41 @@ subtest 'Get on tree, >= 2 deep' => sub {
     likely_tree_ok($subtree);
     is($subtree->class, 'tag', 'Object class ok');
     is($subtree->name, $tag, 'Object name ok');
+};
+
+subtest 'Positional get, 0' => sub {
+    my $tag = 'Identity';
+    ok(my $subtree = $obj->get($tag, 0), 'Got object ok');
+    likely_tree_ok($subtree);
+    is($subtree->class, 'tag', 'Object class ok');
+    is($subtree->name, $tag, 'Object name ok');
+};
+
+# TODO: positional get, >=1, scalar ctx.
+
+subtest 'Positional get, 1' => sub {
+    my $tag = 'Identity';
+    ok(my @subtrees = $obj->get($tag, 1), 'Got objects ok');
+    subtest 'Objects ok' => sub {
+        foreach (@subtrees) {
+            likely_tree_ok($_);
+            is($_->class, 'tag', 'Object class ok');
+            isnt($_->name, $tag, 'Object name likely ok');
+        }
+    };
+};
+
+subtest 'Positional get, >= 2' => sub {
+    my $tag = 'Molecular_info';
+    ok(my @subtrees = $obj->get($tag, 2), 'Got objects ok');
+    subtest 'Objects ok' => sub {
+        foreach (@subtrees) {
+            likely_tree_ok($_);
+            ok($_->isObject, 'Object isObject');
+        }
+    };
+
+    ok(!( @subtrees = $obj->get($tag, 3) ), 'Got no objects ok');
 };
 
 done_testing;
