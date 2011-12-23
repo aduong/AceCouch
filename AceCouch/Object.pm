@@ -29,6 +29,7 @@ sub AUTOLOAD {
     # acceptable arguments (mutex):
     # 1. position
     # 2. -fill TODO
+    # 3. raw
 
     my $position;
     $position = shift if @_ == 1;
@@ -47,7 +48,7 @@ sub new_unfilled {
     my ($class, $db, $id) = @_;
     my ($c, $n) = AceCouch->id2cn($id);
 
-    return bless { db => $db, id => $id, class => $c, name => $n }, $class;
+    bless { db => $db, id => $id, class => $c, name => $n }, $class;
 }
 
 sub new_filled {
@@ -55,7 +56,7 @@ sub new_filled {
     my ($c, $n) = AceCouch->id2cn($id);
     delete @{$data}{'class','name'};
 
-    return bless {
+    bless {
         db     => $db,
         id     => $id,
         class  => $c,
@@ -70,7 +71,7 @@ sub new_tree {
     my ($c, $n) = AceCouch->id2cn($id); # even trees have names and classes...
     delete @{$data}{'class','name'}; # just in case; probably not needed
 
-    return bless {
+    bless {
         db    => $db,
         id    => $id,
         class => $c,
@@ -110,7 +111,7 @@ sub fill { # destructive. fills an unfilled object
         %$self = %$filled;
     }
 
-    return $self;
+    $self;
 }
 
 sub fetch { # destructive. fetches an unfilled object if tree
@@ -124,7 +125,7 @@ sub fetch { # destructive. fetches an unfilled object if tree
         %$self = %$obj;
     }
 
-    return $self;
+    $self;
 }
 
 sub isRoot {
@@ -156,7 +157,7 @@ sub col { # implicitly fills an object
         } @objs;
     }
 
-    return map {
+    map {
         $_->[0] !~ /^_/ ? AceCouch::Object->new_unfilled($self->db, $_->[0]) : ();
     } @objs;
 }
@@ -189,7 +190,7 @@ sub right { # emulate via col
         $data = $data->{$id};
     }
 
-    return AceCouch::Object->new_tree($self->db, $id, $data);
+    AceCouch::Object->new_tree($self->db, $id, $data);
 }
 
 # works the same as AcePerl but does not (yet) support escaped . in path
@@ -215,7 +216,7 @@ sub at {
                    keys %$subhash;
     }
 
-    return AceCouch::Object->new_tree($self->db, $subid, $subhash);
+    AceCouch::Object->new_tree($self->db, $subid, $subhash);
 }
 
 # works the same as AcePerl
@@ -224,8 +225,7 @@ sub tags {
 
     $self->fill unless $self->tree;
 
-    return map { s/tag~// and $_ or () }
-           keys %{$self->data};
+    map { s/tag~// and $_ or () } keys %{$self->data};
 }
 
 sub row {
@@ -250,7 +250,7 @@ sub row {
         }
     }
 
-    return @row;
+    @row;
 }
 
 sub get { # only supporting positional index after tag
@@ -317,7 +317,21 @@ sub get { # only supporting positional index after tag
            . 'the call will return a pseudo-random object';
     }
 
-    return AceCouch::Object->new_tree( $db, @{$data[0]} );
+    AceCouch::Object->new_tree( $db, @{$data[0]} );
+}
+
+sub raw_fetch {
+    my ($self, $tag) = @_;
+    AC::E::RequiredArgument->throw('Raw fetch requires tag') unless $tag;
+
+    eval {
+        $self->db->fetch(
+            class => $self->class,
+            name  => $self->name,
+            tag   => $tag,
+            raw   => 1,
+        );
+    };
 }
 
 sub _find_tree {
@@ -333,7 +347,7 @@ sub _find_tree {
         $data = $data->{"tag~$_"} or return;
     }
 
-    return $self->{_cache}{$tag} = $data;
+    $self->{_cache}{$tag} = $data;
 }
 
 sub _attach_tree { # should add subtrees to the top-level cache too

@@ -45,19 +45,13 @@ sub name { shift->{name} }
 sub host { shift->{host} }
 sub port { shift->{port} }
 
+# deprecated in favour of $obj->raw_fetch($tag)
 sub raw_fetch { # $object, $tag
     my ($self, $obj, $tag) = @_;
-    AC::E::RequiredArgument->throw('Raw fetch requires object and tag')
-        unless defined $obj and $tag;
+    AC::E::RequiredArgument->throw('Raw fetch requires object')
+        unless defined $obj;
 
-    return eval {
-        $self->fetch(
-            class => $obj->class,
-            name  => $obj->name,
-            tag   => $tag,
-            raw   => 1,
-        );
-    };
+    $obj->can('raw_fetch') && $obj->raw_fetch($tag);
 }
 
 # class, name, filled (bool), tag
